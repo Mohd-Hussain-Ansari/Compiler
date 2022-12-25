@@ -9,8 +9,16 @@ import java.util.Set;
  */
 public class DFA {
 
-    public void validateString(Set<String> validInputs, Set<String> states, String startingState, String finalState,
-            HashMap<String, HashMap<String, String>> transitions, String validateString) {
+    String startingState, finalState;
+    HashMap<String, HashMap<String, String>> transitions;
+
+    public DFA(String startingState, String finalState, HashMap<String, HashMap<String, String>> transitions) {
+        this.startingState = startingState;
+        this.finalState = finalState;
+        this.transitions = transitions;
+    }
+
+    public void validateString(String validateString) {
 
         String currentState = startingState;
 
@@ -20,45 +28,52 @@ public class DFA {
             HashMap<String, String> currentStateTransition = transitions.get(currentState);
 
             String nextState = currentStateTransition.get(String.valueOf(c));
+
+            // is transition for current state with input 'c' not present
             if (nextState == null) {
-                System.out.println("Output: Your string is not valid");
-                System.out.println(
-                        String.format("Reason: Your string contain value '%c' which is not present in input set", c));
+                // input is invalid
+                Utility.showError(
+                        String.format("Your string contain value '%c' which is not present in input set", c));
                 return;
             }
+            // now we have the next state as a current state for next iteration
             currentState = nextState;
         }
 
+        // if current state is final state then string is valid
         if (currentState.equals(finalState)) {
             System.out.println("Output: Your string is valid");
-        } else {
-            System.out.println("Output: Your string is not valid");
-            System.out.println(
-                    String.format("Reason: Your string  ends at state '%s' which is not a final state", currentState));
-            // System.out.println("Reason: Your string does not end with final state");
+        }
+        // string ends at state which is not a final state
+        else {
+            Utility.showError(
+                    String.format("Your string  ends at state '%s' which is not a final state", currentState));
         }
 
     }
 
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
+        String inputString, message;
 
-        System.out.print("Enter valid imputs: ");
-        String inputString = sc.nextLine();
+        message = "Enter valid imputs: ";
+        inputString = Utility.getInput(message, sc);
+
         Set<String> validInputs = new HashSet<String>(Arrays.asList(inputString.split(",")));
         // System.out.println("Input: " + validInputs);
 
-        System.out.print("Enter states: ");
-        inputString = sc.nextLine();
+        message = "Enter states: ";
+        inputString = Utility.getInput(message, sc);
+
         Set<String> states = new HashSet<String>(Arrays.asList(inputString.split(",")));
         // System.out.println("States: " + states);
 
-        System.out.print("Enter starting state: ");
-        String startingState = sc.nextLine();
+        message = "Enter starting state: ";
+        String startingState = Utility.getInput(message, sc);
         // System.out.println("Starting state: " + startingState);
 
-        System.out.print("Enter final state: ");
-        String finalState = sc.nextLine();
+        message = "Enter final state: ";
+        String finalState = Utility.getInput(message, sc);
         // System.out.println("Final state: " + finalState);
 
         HashMap<String, HashMap<String, String>> transitions = new HashMap<String, HashMap<String, String>>();
@@ -66,20 +81,22 @@ public class DFA {
         for (String state : states) {
             HashMap<String, String> transition = new HashMap<String, String>();
             for (String validInput : validInputs) {
-                System.out.print("Enter transition for state " + state + " having input " + validInput + ": ");
-                String nextState = sc.nextLine();
+
+                message = String.format("Enter transition state for state '%s' having input '%s' : ", state,
+                        validInput);
+                String nextState = Utility.getInput(message, sc);
                 transition.put(validInput, nextState);
             }
             transitions.put(state, transition);
         }
         // System.out.println("transition: " + transitions);
 
-        DFA dfa = new DFA();
+        DFA dfa = new DFA(startingState, finalState, transitions);
 
         while (true) {
-            System.out.print("Enter string to be valiadated: ");
-            String validateString = sc.nextLine();
-            dfa.validateString(validInputs, states, startingState, finalState, transitions, validateString);
+            message = "Enter string to be valiadated: ";
+            String validateString = Utility.getInput(message, sc);
+            dfa.validateString(validateString);
 
             System.out.print("Do you want to validate another string? (y/n): ");
             String choice = sc.nextLine();
