@@ -1,7 +1,6 @@
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Scanner;
 import java.util.Set;
 
 /**
@@ -9,13 +8,23 @@ import java.util.Set;
  */
 public class DFA {
 
-    String startingState, finalState;
+    String startingState;
+    Set<String> finalStates;
     HashMap<String, HashMap<String, String>> transitions;
 
-    public DFA(String startingState, String finalState, HashMap<String, HashMap<String, String>> transitions) {
+
+    public DFA(String startingState, Set<String> finalStates, HashMap<String, HashMap<String, String>> transitions) {
         this.startingState = startingState;
-        this.finalState = finalState;
+        this.finalStates = finalStates;
         this.transitions = transitions;
+    }
+
+    public Set<String> getFinalStates() {
+        return finalStates;
+    }
+
+    public HashMap<String, HashMap<String, String>> getTransitions() {
+        return transitions;
     }
 
     public void validateString(String validateString) {
@@ -40,8 +49,8 @@ public class DFA {
             currentState = nextState;
         }
 
-        // if current state is final state then string is valid
-        if (currentState.equals(finalState)) {
+        // if current state is in final state then string is valid
+        if (finalStates.contains(currentState)) {
             System.out.println("Output: Your string is valid");
         }
         // string ends at state which is not a final state
@@ -52,60 +61,112 @@ public class DFA {
 
     }
 
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        String inputString, message;
+    public Set<String> getReachableStates(String state, Set<String> reachableStates) {
 
-        message = "Enter valid imputs: ";
-        inputString = Utility.getInput(message, sc);
+        reachableStates.add(state);
 
-        Set<String> validInputs = new HashSet<String>(Arrays.asList(inputString.split(",")));
-        // System.out.println("Input: " + validInputs);
-
-        message = "Enter states: ";
-        inputString = Utility.getInput(message, sc);
-
-        Set<String> states = new HashSet<String>(Arrays.asList(inputString.split(",")));
-        // System.out.println("States: " + states);
-
-        message = "Enter starting state: ";
-        String startingState = Utility.getInput(message, sc);
-        // System.out.println("Starting state: " + startingState);
-
-        message = "Enter final state: ";
-        String finalState = Utility.getInput(message, sc);
-        // System.out.println("Final state: " + finalState);
-
-        HashMap<String, HashMap<String, String>> transitions = new HashMap<String, HashMap<String, String>>();
-
-        for (String state : states) {
-            HashMap<String, String> transition = new HashMap<String, String>();
-            for (String validInput : validInputs) {
-
-                message = String.format("Enter transition state for state '%s' having input '%s' : ", state,
-                        validInput);
-                String nextState = Utility.getInput(message, sc);
-                transition.put(validInput, nextState);
-            }
-            transitions.put(state, transition);
-        }
-        // System.out.println("transition: " + transitions);
-
-        DFA dfa = new DFA(startingState, finalState, transitions);
-
-        while (true) {
-            message = "Enter string to be valiadated: ";
-            String validateString = Utility.getInput(message, sc);
-            dfa.validateString(validateString);
-
-            System.out.print("Do you want to validate another string? (y/n): ");
-            String choice = sc.nextLine();
-            if (choice.equalsIgnoreCase("n")) {
-                break;
+        HashMap<String, String> currentStateTransition = transitions.get(state);
+        // iterating over all the transitions of current state
+        for (String transitionState : currentStateTransition.values()) {
+            // if next state is not already in reachableStates set
+            if (!reachableStates.contains(transitionState)) {
+                // add next state to reachableStates set
+                reachableStates.addAll(getReachableStates(transitionState, reachableStates));
             }
         }
 
-        sc.close();
+        return reachableStates;
+    }
+
+    public void replaceState(String state, String replaceWith) {
+        // replace state in transitions
+        for (HashMap<String, String> currentStateTransition : transitions.values()) {
+            for (String input : currentStateTransition.keySet()) {
+                String nextState = currentStateTransition.get(input);
+                if (nextState.equals(state)) {
+                    currentStateTransition.put(input, replaceWith);
+                }
+            }
+        }
+    }
+
+    public void minimizeDFA() {
+        System.out.println("Minimizing DFA...");
+        // get reachableStates states from start state
+        Set<String> reachableStates = getReachableStates(startingState, new HashSet<String>());
+        // System.out.println("Reachable states: " + reachableStates);
+
+        System.out.println("Removing unreachable states from transitions...");
+
+        // Step 1 : removed unreachable states from transitions
+        transitions.entrySet().removeIf(entry -> !reachableStates.contains(entry.getKey()));
+        // System.out.println("Transitions after removing unreachable states: " +
+        // transitions);
+
+        System.out.println("Splitting transitions into final and non final states...");
+
+        // step 2 : seperate final and non final states into two array
+        ArrayList<String> newFinalStates = new ArrayList<String>();
+        ArrayList<String> nonFinalStates = new ArrayList<String>();
+
+        for (String state : reachableStates) {
+            if (finalStates.contains(state)) {
+                newFinalStates.add(state);
+            } else {
+                nonFinalStates.add(state);
+            }
+        }
+
+        // System.out.println("New Final states: " + newFinalStates);
+        // System.out.println("Non final states: " + nonFinalStates);
+
+        System.out.println("Replacing final states having same transition...");
+
+        // step 3 : replace final states having common transition with one state
+        int finalStateSize = newFinalStates.size();
+        // iterating over new final states
+        for (int i = 0; i < finalStateSize; i++) {
+            for (int j = i + 1; j < finalStateSize + 1; j++) {
+                String state = newFinalStates.get(i);
+                String otherState = newFinalStates.get(j);
+                // if both states have same transition
+                if (transitions.get(state).equals(transitions.get(otherState))) {
+                    // replace other state with current state
+                    replaceState(otherState, state);
+                    // System.out.println("replaced " + otherState + " with " + state);
+                    transitions.remove(otherState);
+                    newFinalStates.remove(otherState);
+                    finalStateSize--;
+                }
+
+            }
+        }
+
+        finalStates = new HashSet<String>(newFinalStates);
+        // System.out.println("Final states after replacing: " + finalStates);
+
+        System.out.println("Replacing non final states having same transition...");
+
+        // step 4 : replace non final states having common transition with one state
+        int nonFinalStateSize = newFinalStates.size();
+        // iterating over new final states
+        for (int i = 0; i < nonFinalStateSize; i++) {
+            for (int j = i + 1; j < nonFinalStateSize + 1; j++) {
+                String state = nonFinalStates.get(i);
+                String otherState = nonFinalStates.get(j);
+                // if both states have same transition
+                if (transitions.get(state).equals(transitions.get(otherState))) {
+                    // replace other state with current state
+                    replaceState(otherState, state);
+                    // System.out.println("replaced " + otherState + " with " + state);
+                    transitions.remove(otherState);
+                    nonFinalStates.remove(otherState);
+                    nonFinalStateSize--;
+                }
+
+            }
+        }
+
     }
 
 }
